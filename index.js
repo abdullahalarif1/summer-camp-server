@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const app = express()
+const jwt = require('jsonwebtoken')
 require('dotenv').config()
 const port = process.env.PORT || 5000
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
@@ -32,6 +33,7 @@ async function run() {
         const instructorCollection = client.db('summerDb').collection('instructor')
         const studentCollection = client.db('summerDb').collection('student')
 
+    
 
         // users related api
         app.get('/students', async (req, res) => {
@@ -51,15 +53,27 @@ async function run() {
         })
 
         app.patch('/students/adminInstructor/:id', async (req, res) => {
-            const id = req.params.id
-            const filter = { _id: new ObjectId(id) }
+            const id = req.params.id;
+            const filter = { _id: new ObjectId(id) };
+            const { role } = req.body; // Get the role from the request body
+
             const updateDoc = {
-                role: 'admin',
-                role: 'instructor'
+                $set: {}
+            };
+
+            if (role === 'admin' || role === 'instructor') {
+                updateDoc.$set.role = role; // Set the role as provided in the request body
             }
-            const result = await studentCollection.updateOne(filter, updateDoc)
-            res.send(result)
-        })
+
+            try {
+                const result = await studentCollection.updateOne(filter, updateDoc);
+                res.send(result);
+            } catch (error) {
+                console.error(error);
+                res.status(500).send('Error updating user role');
+            }
+        });
+
 
 
 
