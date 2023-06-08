@@ -50,7 +50,17 @@ async function run() {
             res.send(result)
         })
 
-      
+        app.patch('/students/adminInstructor/:id', async (req, res) => {
+            const id = req.params.id
+            const filter = { _id: new ObjectId(id) }
+            const updateDoc = {
+                role: 'admin',
+                role: 'instructor'
+            }
+            const result = await studentCollection.updateOne(filter, updateDoc)
+            res.send(result)
+        })
+
 
 
         app.get('/instructors/', async (req, res) => {
