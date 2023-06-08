@@ -78,8 +78,28 @@ async function run() {
         // security layer: verifyJWT
         // email check
         // check admin and instructor
-      
+        app.get('/students/adminInstructor/:email', verifyJWT, async (req, res) => {
+            const email = req.params.email;
 
+            if (req.decoded.email !== email) {
+                res.send({ admin: false, instructor: false });
+            }
+
+            try {
+                const query = { email: email };
+                const user = await studentCollection.findOne(query, { role: 1 });
+                if (user) {
+                    res.send({ admin: user.role === 'admin', instructor: user.role === 'instructor' });
+                } else {
+                    res.status(404).send('User not found');
+                }
+            } catch (error) {
+                console.error(error);
+                res.status(500).send('Error retrieving user roles');
+            }
+        });
+
+        
 
         app.patch('/students/adminInstructor/:id', async (req, res) => {
             const id = req.params.id;
