@@ -3,7 +3,7 @@ const cors = require('cors');
 const app = express()
 require('dotenv').config()
 const port = process.env.PORT || 5000
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
 
 // middleware
@@ -30,14 +30,40 @@ async function run() {
 
 
         const instructorCollection = client.db('summerDb').collection('instructor')
+        const studentCollection = client.db('summerDb').collection('student')
+
+
+        // users related api
+        app.get('/students', async (req, res) => {
+            const result = await studentCollection.find().toArray()
+            res.send(result);
+        })
+
+        app.post('/students', async (req, res) => {
+            const student = req.body;
+            const query = { email: student.email }
+            const existingUser = await studentCollection.findOne(query)
+            if (existingUser) {
+                return res.send({ message: 'user already exist' })
+            }
+            const result = await studentCollection.insertOne(student)
+            res.send(result)
+        })
+
+      
 
 
         app.get('/instructors/', async (req, res) => {
-            const result = await instructorCollection.find().toArray()
+            const query = {}
+            const options = {
+                sort: { "numStudent": -1 }
+            }
+            const result = await instructorCollection.find(query, options).toArray()
             res.send(result)
 
 
         })
+
 
 
 
