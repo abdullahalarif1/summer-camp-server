@@ -46,15 +46,37 @@ async function run() {
         // Connect the client to the server	(optional starting in v4.7)
         await client.connect();
 
-
+        //collections
         const instructorCollection = client.db('summerDb').collection('instructor')
+        const instructorsCollection = client.db('summerDb').collection('instructors')
         const studentCollection = client.db('summerDb').collection('student')
+
+        // const verifyAdminInstructor = async (res, req, next) => {
+        //     const email = req.decoded.email
+        //     const query = { email: email }
+        //     const user = await studentCollection.findOne(query)
+        //     if (user?.role !== 'admin') {
+        //         return res.status(403).send({ error: true, message: 'forbidden message' })
+        //     }
+        //     next()
+        // }
 
         //jwt
         app.post('/jwt', (req, res) => {
             const user = req.body
             const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' })
             res.send({ token })
+        })
+
+        app.get('/instructors', async (req, res) => {
+            const result = await instructorsCollection.find().toArray()
+            res.send(result);
+        })
+
+        app.post('/instructors', async (req, res) => {
+            const instructor = req.body
+            const result = await instructorsCollection.insertOne(instructor)
+            res.send(result)
         })
 
 
@@ -99,7 +121,28 @@ async function run() {
             }
         });
 
-        
+        app.get('/instructor/approveDeny/:email', async (req, res) => {
+            const email = req.params.email;
+
+            if (req.decoded.email !== email) {
+                res.send({ admin: false, instructor: false });
+            }
+
+            try {
+                const query = { email: email };
+                const user = await studentCollection.findOne(query, { role: 1 });
+                if (user) {
+                    res.send({ admin: user.role === 'admin', instructor: user.role === 'instructor' });
+                } else {
+                    res.status(404).send('User not found');
+                }
+            } catch (error) {
+                console.error(error);
+                res.status(500).send('Error retrieving user roles');
+            }
+        });
+
+
 
         app.patch('/students/adminInstructor/:id', async (req, res) => {
             const id = req.params.id;
