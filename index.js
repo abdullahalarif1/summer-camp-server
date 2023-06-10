@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const app = express()
+const stripe = require('stripe')(process.env.PAYMENT_SECRET_KEY)
 const jwt = require('jsonwebtoken')
 require('dotenv').config()
 const port = process.env.PORT || 5000
@@ -50,6 +51,8 @@ async function run() {
         const instructorCollection = client.db('summerDb').collection('instructor')
         const instructorsCollection = client.db('summerDb').collection('instructors')
         const studentCollection = client.db('summerDb').collection('student')
+        const cartCollection = client.db('summerDb').collection('carts')
+
 
         // const verifyAdminInstructor = async (res, req, next) => {
         //     const email = req.decoded.email
@@ -68,16 +71,52 @@ async function run() {
             res.send({ token })
         })
 
+        app.get('/carts', async (req, res) => {
+            const email = req.query.email;
+            if (!email) {
+                res.send([])
+            }
+            const query = { email: email }
+            const result = await cartCollection.find(query).toArray()
+            res.send(result)
+
+
+        })
+
+        // TODO
+        app.post('/carts', async (req, res) => {
+            const item = req.body
+            console.log(item)
+            const result = await cartCollection.insertOne(item)
+            res.send(result)
+
+        })
+
+        app.delete('/carts/:id', async (req, res) => {
+            const id = req.params.id
+            const query = { _id: new ObjectId(id) }
+            const result = await cartCollection.deleteOne(query)
+            res.send(result)
+        })
+
+
+
         app.get('/instructors', async (req, res) => {
-            const result = await instructorsCollection.find().toArray()
+            let query = {}
+            if (req.query?.text === "approved") {
+                query = { status: "approved" }
+            }
+            const result = await instructorsCollection.find(query).toArray()
             res.send(result);
         })
+
 
         app.post('/instructors', async (req, res) => {
             const instructor = req.body
             const result = await instructorsCollection.insertOne(instructor)
             res.send(result)
         })
+
 
 
         // users related api
@@ -121,27 +160,48 @@ async function run() {
             }
         });
 
-        app.get('/instructor/approveDeny/:email', async (req, res) => {
-            const email = req.params.email;
 
-            if (req.decoded.email !== email) {
-                res.send({ admin: false, instructor: false });
+
+        app.patch('/instructors/approveDeny/:id', async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: new ObjectId(id) };
+            const { status } = req.body; // Get the role from the request body
+
+            const updateDoc = {
+                $set: {}
+            };
+
+            if (status === 'approved' || status === 'denied') {
+                updateDoc.$set.status = status; // Set the status as provided in the request body
             }
 
             try {
-                const query = { email: email };
-                const user = await studentCollection.findOne(query, { role: 1 });
-                if (user) {
-                    res.send({ admin: user.role === 'admin', instructor: user.role === 'instructor' });
-                } else {
-                    res.status(404).send('User not found');
-                }
+                const result = await instructorsCollection.updateOne(filter, updateDoc);
+                res.send(result);
             } catch (error) {
                 console.error(error);
-                res.status(500).send('Error retrieving user roles');
+                res.status(500).send('Error updating user status');
             }
         });
 
+
+        app.patch('/instructors/feedback/:id', async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: new ObjectId(id) };
+            const { feedback } = req.body; // Get the feedback from the request body
+
+            const updateDoc = {
+                $set: { feedback } // Update the feedback field with the new value
+            };
+
+            try {
+                const result = await instructorsCollection.updateOne(filter, updateDoc);
+                res.send(result);
+            } catch (error) {
+                console.error(error);
+                res.status(500).send('Error updating feedback');
+            }
+        });
 
 
         app.patch('/students/adminInstructor/:id', async (req, res) => {
@@ -169,7 +229,9 @@ async function run() {
 
 
 
-        app.get('/instructors/', async (req, res) => {
+
+
+        app.get('/instructor/', async (req, res) => {
             const query = {}
             const options = {
                 sort: { "numStudent": -1 }
@@ -180,6 +242,7 @@ async function run() {
 
         })
 
+        //
 
 
 
