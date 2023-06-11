@@ -1,10 +1,10 @@
 const express = require('express');
 const cors = require('cors');
 const app = express()
-const stripe = require('stripe')(process.env.PAYMENT_SECRET_KEY)
 const jwt = require('jsonwebtoken')
 require('dotenv').config()
 const port = process.env.PORT || 5000
+const stripe = require('stripe')(process.env.PAYMENT_SECRET_KEY)
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
 
@@ -83,10 +83,24 @@ async function run() {
 
         })
 
+        app.get('/carts/:id', async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: new ObjectId(id) }
+            const result = await cartCollection.findOne(filter)
+            res.send(result)
+
+
+        })
+
         // TODO
         app.post('/carts', async (req, res) => {
             const item = req.body
             console.log(item)
+            const query = { courseId: item.courseId }
+            const existingClass = await cartCollection.findOne(query)
+            if (existingClass) {
+                return res.send({ message: 'Already selected' })
+            }
             const result = await cartCollection.insertOne(item)
             res.send(result)
 
@@ -231,7 +245,7 @@ async function run() {
 
 
 
-        app.get('/instructor/', async (req, res) => {
+        app.get('/instructor', async (req, res) => {
             const query = {}
             const options = {
                 sort: { "numStudent": -1 }
@@ -242,7 +256,25 @@ async function run() {
 
         })
 
-        //
+        // create payment intent
+        app.post('/create-payment-intent', async (req, res) => {
+            const { price } = req.body;
+            if (price) {
+                const amount = parseFloat(price) * 100
+                const paymentIntent = await stripe.paymentIntents.create({
+                    amount: amount,
+                    currency: 'usd',
+                    payment_method_types: ['card']
+                })
+
+                res.send({
+                    clientSecret: paymentIntent.client_secret
+                })
+            }
+
+
+
+        })
 
 
 
