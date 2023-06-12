@@ -7,7 +7,7 @@ const port = process.env.PORT || 5000
 const stripe = require('stripe')(process.env.PAYMENT_SECRET_KEY)
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
-
+app.set('port', (5000));
 // middleware
 app.use(cors())
 app.use(express.json())
@@ -45,13 +45,14 @@ const client = new MongoClient(uri, {
 async function run() {
     try {
         // Connect the client to the server	(optional starting in v4.7)
-        await client.connect();
+        // await client.connect();
 
         //collections
         const instructorCollection = client.db('summerDb').collection('instructor')
         const instructorsCollection = client.db('summerDb').collection('instructors')
         const studentCollection = client.db('summerDb').collection('student')
         const cartCollection = client.db('summerDb').collection('carts')
+        const paymentCollection = client.db('summerDb').collection('payments')
 
 
         // const verifyAdminInstructor = async (res, req, next) => {
@@ -242,9 +243,6 @@ async function run() {
 
 
 
-
-
-
         app.get('/instructor', async (req, res) => {
             const query = {}
             const options = {
@@ -257,7 +255,7 @@ async function run() {
         })
 
         // create payment intent
-        app.post('/create-payment-intent', async (req, res) => {
+        app.post('/create-payment-intent', verifyJWT, async (req, res) => {
             const { price } = req.body;
             if (price) {
                 const amount = parseFloat(price) * 100
@@ -272,9 +270,27 @@ async function run() {
                 })
             }
 
-
-
         })
+
+        app.post('/payments', async (req, res) => {
+            const payment = req.body
+            const result = await paymentCollection.insertOne(payment)
+
+            const query = { _id: new ObjectId(payment.cartItems) }
+            const deleteResult = await cartCollection.deleteOne(query)
+            res.send({ result, deleteResult })
+        })
+
+        //TODO
+        app.get('/payments', async (req, res) => {
+            const query = {}
+            const options = {
+                sort: { "price": -1 }
+            }
+            const result = await paymentCollection.find(query, options).toArray()
+            res.send(result);
+        })
+
 
 
 
