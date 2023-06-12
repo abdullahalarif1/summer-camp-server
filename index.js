@@ -281,6 +281,9 @@ async function run() {
             res.send({ result, deleteResult })
         })
 
+
+        
+
         //TODO
         app.get('/payments', async (req, res) => {
             const query = {}
