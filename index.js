@@ -282,11 +282,13 @@ async function run() {
         })
 
 
-        
+
 
         //TODO
-        app.get('/payments', async (req, res) => {
-            const query = {}
+        app.get('/payments/:email', async (req, res) => {
+            const email = req.params.email;
+            console.log(email);
+            const query = { email: email }
             const options = {
                 sort: { "price": -1 }
             }
